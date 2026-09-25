@@ -1,7 +1,9 @@
 import { useSyncExternalStore } from "react";
 const K = "unknown.sound.v1";
+const BG_MUSIC_SRC = "/canon.mp3";
+
 let enabled = false; let ctx: AudioContext | null = null;
-let ambientNodes: { stop: () => void } | null = null;
+let bgAudio: HTMLAudioElement | null = null;
 const subs = new Set<() => void>();
 if (typeof window !== "undefined") try { enabled = JSON.parse(localStorage.getItem(K) || "false"); } catch {}
 
@@ -26,22 +28,33 @@ export const sfx = {
   back: () => blip(260, 0.07, "sine", 0.03, 180),
 };
 
-function startAmbient() {
-  if (ambientNodes) return; const c = getCtx();
-  const master = c.createGain(); master.gain.value = 0.028; master.connect(c.destination);
-  const osc1 = c.createOscillator(); osc1.type = "sine"; osc1.frequency.value = 110;
-  const osc2 = c.createOscillator(); osc2.type = "sine"; osc2.frequency.value = 164.8;
-  const lfo = c.createOscillator(); lfo.frequency.value = 0.06; const lfoGain = c.createGain(); lfoGain.gain.value = 0.012;
-  lfo.connect(lfoGain).connect(master.gain);
-  osc1.connect(master); osc2.connect(master);
-  osc1.start(); osc2.start(); lfo.start();
-  ambientNodes = { stop: () => { osc1.stop(); osc2.stop(); lfo.stop(); master.disconnect(); } };
+function getBgAudio() {
+  if (!bgAudio && typeof window !== "undefined") {
+    bgAudio = new Audio(BG_MUSIC_SRC);
+    bgAudio.loop = true;
+    bgAudio.volume = BG_MUSIC_VOLUME;
+    bgAudio.preload = "auto";
+  }
+  return bgAudio;
 }
-function stopAmbient() { ambientNodes?.stop(); ambientNodes = null; }
+
+function startBgMusic() {
+  const a = getBgAudio();
+  if (!a) return;
+  a.volume = BG_MUSIC_VOLUME;
+  // play() can reject if not inside a user gesture on some browsers;
+  // setSound(true) is always called from a tap/click, so this normally resolves.
+  a.play().catch(() => {});
+}
+
+function stopBgMusic() {
+  bgAudio?.pause();
+  if (bgAudio) bgAudio.currentTime = 0;
+}
 
 export function setSound(v: boolean) {
   enabled = v; try { localStorage.setItem(K, JSON.stringify(v)); } catch {}
-  if (v) { getCtx(); startAmbient(); } else stopAmbient();
+  if (v) { getCtx(); startBgMusic(); } else { stopBgMusic(); }
   subs.forEach((f) => f());
 }
 export const useSound = () => useSyncExternalStore((f) => (subs.add(f), () => subs.delete(f)), () => enabled, () => false);
