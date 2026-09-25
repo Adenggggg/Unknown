@@ -1,0 +1,6 @@
+@import "tailwindcss";
+html,body{background:#050507;color:#e8e6e1;overscroll-behavior:none;touch-action:manipulation;font-family:ui-sans-serif,system-ui,sans-serif;overflow-x:hidden}
+.pad{padding:max(env(safe-area-inset-top),16px) 20px max(env(safe-area-inset-bottom),16px)}
+@keyframes bob{50%{transform:translateY(-8px)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes fade{from{opacity:0;transform:translateY(6px)}}
+.bob{animation:bob 6s ease-in-out infinite}.fade{animation:fade .6s both}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}

@@ -1,0 +1,2 @@
+import { type RouteConfig, index, route } from "@react-router/dev/routes";
+export default [index("routes/home.tsx"), route("world","routes/world.tsx"), route("arcade","routes/arcade.tsx"), route("observatory","routes/observatory.tsx"), route("radio","routes/radio.tsx"), route("garden","routes/garden.tsx"), route("camera","routes/camera.tsx"), route("archive","routes/archive.tsx"), route("secret","routes/secret.tsx"), route("universe","routes/universe.tsx")] satisfies RouteConfig;
