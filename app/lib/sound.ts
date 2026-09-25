@@ -1,21 +1,35 @@
 import { useSyncExternalStore } from "react";
 const K = "unknown.sound.v1";
 const BG_MUSIC_SRC = "/canon.mp3";
+const BG_MUSIC_VOLUME = 0.2;
 
 let enabled = false; let ctx: AudioContext | null = null;
 let bgAudio: HTMLAudioElement | null = null;
 const subs = new Set<() => void>();
 if (typeof window !== "undefined") try { enabled = JSON.parse(localStorage.getItem(K) || "false"); } catch {}
 
-function getCtx() { if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)(); if (ctx.state === "suspended") ctx.resume(); return ctx; }
+function getCtx() {
+  try {
+    if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  } catch {
+    return null;
+  }
+}
 
 function blip(freq: number, dur: number, type: OscillatorType = "sine", vol = 0.05, glideTo?: number) {
   if (!enabled) return;
-  const c = getCtx(); const o = c.createOscillator(); const g = c.createGain();
-  o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
-  if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + dur);
-  g.gain.setValueAtTime(vol, c.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
-  o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + dur);
+  try {
+    const c = getCtx(); if (!c) return;
+    const o = c.createOscillator(); const g = c.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
+    if (glideTo) o.frequency.exponentialRampToValueAtTime(glideTo, c.currentTime + dur);
+    g.gain.setValueAtTime(vol, c.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime + dur);
+  } catch {
+    // audio isn't critical — never let it break the UI
+  }
 }
 
 export const sfx = {
@@ -30,30 +44,37 @@ export const sfx = {
 
 function getBgAudio() {
   if (!bgAudio && typeof window !== "undefined") {
-    bgAudio = new Audio(BG_MUSIC_SRC);
-    bgAudio.loop = true;
-    bgAudio.volume = BG_MUSIC_VOLUME;
-    bgAudio.preload = "auto";
+    try {
+      bgAudio = new Audio(BG_MUSIC_SRC);
+      bgAudio.loop = true;
+      bgAudio.volume = BG_MUSIC_VOLUME;
+      bgAudio.preload = "auto";
+    } catch {
+      bgAudio = null;
+    }
   }
   return bgAudio;
 }
 
 function startBgMusic() {
-  const a = getBgAudio();
-  if (!a) return;
-  a.volume = BG_MUSIC_VOLUME;
-  // play() can reject if not inside a user gesture on some browsers;
-  // setSound(true) is always called from a tap/click, so this normally resolves.
-  a.play().catch(() => {});
+  try {
+    const a = getBgAudio();
+    if (!a) return;
+    a.volume = BG_MUSIC_VOLUME;
+    a.play().catch(() => {});
+  } catch {  }
 }
 
 function stopBgMusic() {
-  bgAudio?.pause();
-  if (bgAudio) bgAudio.currentTime = 0;
+  try {
+    bgAudio?.pause();
+    if (bgAudio) bgAudio.currentTime = 0;
+  } catch {}
 }
 
 export function setSound(v: boolean) {
-  enabled = v; try { localStorage.setItem(K, JSON.stringify(v)); } catch {}
+  enabled = v;
+  try { localStorage.setItem(K, JSON.stringify(v)); } catch {}
   if (v) { getCtx(); startBgMusic(); } else { stopBgMusic(); }
   subs.forEach((f) => f());
 }
